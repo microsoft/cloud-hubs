@@ -279,7 +279,7 @@ resource pipeline 'Microsoft.DataFactory/factories/pipelines@2018-06-01' =  {
         typeProperties: {
           variableName: 'metric'
           value: {
-            value: '@split(split(pipeline().parameters.folderName, \'/\')[2], \'-\')[2]'
+            value: '@last(split(split(pipeline().parameters.folderName, \'/\')[2], \'-\'))'
             type: 'Expression'
           }
         }
