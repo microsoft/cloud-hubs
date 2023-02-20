@@ -9,6 +9,10 @@ param hubName string
 var storageAccountSuffix = 'store'
 var storageAccountName = '${substring(replace(toLower(hubName), '-', ''), 0, 24 - length(storageAccountSuffix))}${storageAccountSuffix}'
 
+// Generate unique sKeyVault name
+var keyVaultSuffixSuffix = 'vault'
+var keyVaultName = '${substring(replace(toLower(hubName), '-', ''), 0, 24 - length(keyVaultSuffixSuffix))}${keyVaultSuffixSuffix}'
+
 // Data factory naming requirements: Min 3, Max 63, can only contain letters, numbers and non-repeating dashes 
 var dataFactorySuffix = '-engine'
 var dataFactoryName = '${take(hubName, 63 - length(dataFactorySuffix))}${dataFactorySuffix}'
@@ -34,6 +38,8 @@ param enableDefaultTelemetry bool = true
 // The last segment of the telemetryId is used to identify this module
 var telemetryId = '00f120b5-2007-6120-0000-40b000000000'
 var finOpsToolkitVersion = '0.0.1'
+var exportContainerName  = 'export'
+var dataContainerName  = 'data'
 
 /**
  * Resources
@@ -61,27 +67,216 @@ resource defaultTelemetry 'Microsoft.Resources/deployments@2022-09-01' = if (ena
 
 // ADLSv2 storage account for staging and archive
 module storageAccount 'Microsoft.Storage/storageAccounts/deploy.bicep' = {
-  name: 'storage'
+  name: storageAccountName
   params: {
     name: storageAccountName
     location: location
     storageAccountSku: storageSku
     tags: resourceTags
+    allowBlobPublicAccess: true
+    blobServices: {
+      containers: [
+        {
+          name: exportContainerName
+          publicAccess: 'None'
+        }
+        {
+          name: dataContainerName
+          publicAccess: 'None'
+        }
+      ]
+    }
   }
 }
 
 module dataFactory 'Microsoft.DataFactory/factories/deploy.bicep' = {
-  name: 'dataFactory'
+  name: dataFactoryName
   params: {
     name: dataFactoryName
+    systemAssignedIdentity: true
     location: location
     tags: resourceTags
   }
 }
 
-/**
- * Outputs
- */
+module keyVault 'Microsoft.KeyVault/vaults/deploy.bicep' = {
+  name: keyVaultName
+  params: {
+    name: keyVaultName
+    location: location
+    tags: resourceTags
+    enablePurgeProtection: false
+    accessPolicies: [
+      {
+        objectId: dataFactory.outputs.systemAssignedPrincipalId
+        tenantId: subscription().tenantId
+        permissions: {
+          secrets: [
+            'get'
+          ]
+        }
+      }
+    ]
+  }
+}
+
+module keyvayltSecret_storageAccount 'Microsoft.Custom/secrets/deploy.bicep' = {
+  name: '${storageAccountName}_secret'
+  params: {
+    keyVaultName: keyVault.name
+    secretName: storageAccountName
+    storageAccountName: storageAccount.name
+    location: location
+  }
+}
+
+module linkedService_keyvault 'Microsoft.Custom/linkedservices/deploy.bicep' = {
+  name: '${keyVault.name}_link'
+  dependsOn: [
+    dataFactory
+    keyVault
+  ]
+  params: {
+    linkedServiceName: keyVault.name
+    dataFactoryName: dataFactory.name
+    keyVaultName: keyVault.name
+    linkedServiceType: 'AzureKeyVault'
+  }
+}
+
+module linkedService_storage 'Microsoft.Custom/linkedservices/deploy.bicep' = {
+  name: '${storageAccount.name}_link'
+  dependsOn: [
+    dataFactory
+    keyVault
+    storageAccount
+    linkedService_keyvault
+    keyvayltSecret_storageAccount
+  ]
+  params: {
+    linkedServiceName: storageAccount.name
+    dataFactoryName: dataFactory.name
+    keyVaultName: keyVault.name
+    storageAccountName: storageAccount.name
+    linkedServiceType: 'AzureBlobFS'
+  }
+}
+
+module dataset_mscmexport 'Microsoft.Custom/datasets/deploy.bicep' = {
+  name: exportContainerName
+  dependsOn: [
+    linkedService_storage
+    linkedService_keyvault
+  ]
+  params: {
+    dataFactoryName: dataFactory.name
+    datasetName: exportContainerName
+    linkedServiceName: storageAccount.name
+    datasetType: 'DelimitedText'
+  }
+}
+
+module dataset_mscmdata_csv 'Microsoft.Custom/datasets/deploy.bicep' = {
+  name: '${dataContainerName}_csv'
+  dependsOn: [
+    linkedService_storage
+    linkedService_keyvault
+  ]
+  params: {
+    dataFactoryName: dataFactory.name
+    datasetName: '${dataContainerName}_csv'
+    linkedServiceName: storageAccount.name
+    compressionCodec: 'gzip'
+    datasetType: 'DelimitedText'
+  }
+}
+
+module dataset_mscmdata_parquet 'Microsoft.Custom/datasets/deploy.bicep' = {
+  name: '${dataContainerName}_parquet'
+  dependsOn: [
+    linkedService_storage
+    linkedService_keyvault
+  ]
+  params: {
+    dataFactoryName: dataFactory.name
+    datasetName: '${dataContainerName}_parquet'
+    linkedServiceName: storageAccount.name
+    compressionCodec: 'gzip'
+    datasetType: 'Parquet'
+  }
+}
+
+module pipeline_transform_parquet 'Microsoft.Custom/pipelines/transform.bicep' = {
+  name: '${dataContainerName}_transform_parquet'
+  dependsOn: [
+    dataset_mscmexport
+    dataset_mscmdata_parquet
+  ]
+  params: {
+    dataFactoryName: dataFactoryName
+    pipelineName: '${dataContainerName}_transform_parquet'
+    sourceDataset: dataset_mscmexport.name
+    sinkDataset: dataset_mscmdata_parquet.name
+    fileExtension: '.parquet'
+  }
+}
+
+module pipeline_transform_csv 'Microsoft.Custom/pipelines/transform.bicep' = {
+  name: '${dataContainerName}_transform_csv'
+  dependsOn: [
+    dataset_mscmexport
+    dataset_mscmdata_csv
+  ]
+  params: {
+    dataFactoryName: dataFactoryName
+    pipelineName: '${dataContainerName}_transform_csv'
+    sourceDataset: dataset_mscmexport.name
+    sinkDataset: dataset_mscmdata_csv.name
+    fileExtension: '.csv'
+  }
+}
+
+module pipeline_extract_parquet 'Microsoft.Custom/pipelines/extract.bicep' = {
+  name: '${exportContainerName}_extract_parquet'
+  dependsOn: [
+    pipeline_transform_parquet
+  ]
+  params: {
+    dataFactoryName: dataFactoryName
+    pipelineName: '${exportContainerName}_extract_parquet'
+    pipelineToExecute: pipeline_transform_parquet.name
+  }
+}
+
+module pipeline_extract_csv 'Microsoft.Custom/pipelines/extract.bicep' = {
+  name: '${exportContainerName}_extract_csv'
+  dependsOn: [
+    pipeline_transform_csv
+  ]
+  params: {
+    dataFactoryName: dataFactoryName
+    pipelineName: '${exportContainerName}_extract_csv'
+    pipelineToExecute: pipeline_transform_csv.name
+  }
+}
+
+module trigger_storageAccount 'Microsoft.Custom/triggers/deploy.bicep' = {
+  name: '${storageAccount.name}_trigger'
+  dependsOn: [
+    pipeline_extract_csv
+  ]
+  params: {
+    BlobContainerName: exportContainerName
+    PipelineName: pipeline_extract_csv.name
+    dataFactoryName: dataFactory.name
+    storageAccountId: storageAccount.outputs.resourceId
+    triggerName: storageAccount.name
+  }
+}
+
+//
+//  Outputs
+//
 
 @description('Name of the deployed hub instance.')
 output name string = hubName
@@ -89,11 +284,17 @@ output name string = hubName
 @description('Azure resource location resources were deployed to.')
 output location string = location
 
+@description('Name of the Data Factory.')
+output dataFactorytName string = dataFactory.outputs.name
+
 @description('Resource ID of the storage account created for the hub instance. This must be used when creating the Cost Management export.')
 output storageAccountId string = storageAccount.outputs.resourceId
 
 @description('Name of the storage account created for the hub instance. This must be used when connecting FinOps toolkit Power BI reports to your data.')
 output storageAccountName string = storageAccount.outputs.name
 
+@description('Resource name of the storage account trigger.')
+output storageAccountTriggerName string = trigger_storageAccount.outputs.name
+
 @description('URL to use when connecting custom Power BI reports to your data.')
-output storageUrlForPowerBI string = 'https://${storageAccount.outputs.name}.dfs.${environment().suffixes.storage}/ms-cm-exports'
+output storageUrlForPowerBI string = 'https://${storageAccount.outputs.name}.dfs.${environment().suffixes.storage}/${dataContainerName}'
