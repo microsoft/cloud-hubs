@@ -17,7 +17,9 @@ param sinkDataset string
 @description('Optional. Enable telemetry via a Globally Unique Identifier (GUID).')
 param enableDefaultTelemetry bool = true
 
-param fileExtension string = '.csv'
+param fileExtension string
+
+param containerName string
 
 resource defaultTelemetry 'Microsoft.Resources/deployments@2021-04-01' = if (enableDefaultTelemetry) {
   name: 'pid-47ed15a6-730a-4827-bcb4-0fd963ffbd82-${uniqueString(deployment().name)}'
@@ -216,7 +218,7 @@ resource pipeline 'Microsoft.DataFactory/factories/pipelines@2018-06-01' =  {
         typeProperties: {
           variableName: 'destinationFolder'
           value: {
-            value: '@concat(\'data/\',variables(\'scope\'),\'/\',variables(\'date\'),\'/\',variables(\'metric\'))'
+            value: '@concat(\'${containerName}/\',variables(\'scope\'),\'/\',variables(\'date\'),\'/\',variables(\'metric\'))'
             type: 'Expression'
           }
         }
