@@ -1,3 +1,7 @@
+// Source: https://github.com/Azure/ResourceModules/blob/main/modules/Microsoft.KeyVault/vaults/secrets/deploy.bicep
+// Date: 2023-02-018
+// Version: 0.9
+
 @description('Conditional. The name of the parent key vault. Required if the template is used in a standalone deployment.')
 param keyVaultName string
 
