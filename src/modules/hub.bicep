@@ -9,6 +9,9 @@ param hubName string
 var storageAccountSuffix = 'store'
 var storageAccountName = '${substring(replace(toLower(hubName), '-', ''), 0, 24 - length(storageAccountSuffix))}${storageAccountSuffix}'
 
+var exportContainerName  = 'ms-cm-exports'
+var dataContainerName  = 'ms-cm-data'
+
 // Generate unique sKeyVault name
 var keyVaultSuffixSuffix = 'vault'
 var keyVaultName = '${substring(replace(toLower(hubName), '-', ''), 0, 24 - length(keyVaultSuffixSuffix))}${keyVaultSuffixSuffix}'
@@ -38,8 +41,6 @@ param enableDefaultTelemetry bool = true
 // The last segment of the telemetryId is used to identify this module
 var telemetryId = '00f120b5-2007-6120-0000-40b000000000'
 var finOpsToolkitVersion = '0.0.1'
-var exportContainerName  = 'export'
-var dataContainerName  = 'data'
 
 /**
  * Resources
@@ -163,28 +164,28 @@ module linkedService_storage 'Microsoft.Custom/linkedservices/deploy.bicep' = {
 }
 
 module dataset_mscmexport 'Microsoft.Custom/datasets/deploy.bicep' = {
-  name: exportContainerName
+  name: replace(exportContainerName, '-', '_')
   dependsOn: [
     linkedService_storage
     linkedService_keyvault
   ]
   params: {
     dataFactoryName: dataFactory.name
-    datasetName: exportContainerName
+    datasetName: replace(exportContainerName, '-', '_')
     linkedServiceName: storageAccount.name
     datasetType: 'DelimitedText'
   }
 }
 
 module dataset_mscmdata_csv 'Microsoft.Custom/datasets/deploy.bicep' = {
-  name: '${dataContainerName}_csv'
+  name: '${replace(dataContainerName, '-', '_')}_csv'
   dependsOn: [
     linkedService_storage
     linkedService_keyvault
   ]
   params: {
     dataFactoryName: dataFactory.name
-    datasetName: '${dataContainerName}_csv'
+    datasetName: '${replace(dataContainerName, '-', '_')}_csv'
     linkedServiceName: storageAccount.name
     compressionCodec: 'gzip'
     datasetType: 'DelimitedText'
@@ -192,14 +193,14 @@ module dataset_mscmdata_csv 'Microsoft.Custom/datasets/deploy.bicep' = {
 }
 
 module dataset_mscmdata_parquet 'Microsoft.Custom/datasets/deploy.bicep' = {
-  name: '${dataContainerName}_parquet'
+  name: '${replace(dataContainerName, '-', '_')}_parquet'
   dependsOn: [
     linkedService_storage
     linkedService_keyvault
   ]
   params: {
     dataFactoryName: dataFactory.name
-    datasetName: '${dataContainerName}_parquet'
+    datasetName: '${replace(dataContainerName, '-', '_')}_parquet'
     linkedServiceName: storageAccount.name
     compressionCodec: 'gzip'
     datasetType: 'Parquet'
@@ -207,55 +208,57 @@ module dataset_mscmdata_parquet 'Microsoft.Custom/datasets/deploy.bicep' = {
 }
 
 module pipeline_transform_parquet 'Microsoft.Custom/pipelines/transform.bicep' = {
-  name: '${dataContainerName}_transform_parquet'
+  name: '${replace(dataContainerName, '-', '_')}_transform_parquet'
   dependsOn: [
     dataset_mscmexport
     dataset_mscmdata_parquet
   ]
   params: {
     dataFactoryName: dataFactoryName
-    pipelineName: '${dataContainerName}_transform_parquet'
+    pipelineName: '${replace(dataContainerName, '-', '_')}_transform_parquet'
     sourceDataset: dataset_mscmexport.name
     sinkDataset: dataset_mscmdata_parquet.name
     fileExtension: '.parquet'
+    containerName: dataContainerName
   }
 }
 
 module pipeline_transform_csv 'Microsoft.Custom/pipelines/transform.bicep' = {
-  name: '${dataContainerName}_transform_csv'
+  name: '${replace(dataContainerName, '-', '_')}_transform_csv'
   dependsOn: [
     dataset_mscmexport
     dataset_mscmdata_csv
   ]
   params: {
     dataFactoryName: dataFactoryName
-    pipelineName: '${dataContainerName}_transform_csv'
+    pipelineName: '${replace(dataContainerName, '-', '_')}_transform_csv'
     sourceDataset: dataset_mscmexport.name
     sinkDataset: dataset_mscmdata_csv.name
-    fileExtension: '.csv'
+    fileExtension: '.csv.gz'
+    containerName: dataContainerName
   }
 }
 
 module pipeline_extract_parquet 'Microsoft.Custom/pipelines/extract.bicep' = {
-  name: '${exportContainerName}_extract_parquet'
+  name: '${replace(exportContainerName, '-', '_')}_extract_parquet'
   dependsOn: [
     pipeline_transform_parquet
   ]
   params: {
     dataFactoryName: dataFactoryName
-    pipelineName: '${exportContainerName}_extract_parquet'
+    pipelineName: '${replace(exportContainerName, '-', '_')}_extract_parquet'
     pipelineToExecute: pipeline_transform_parquet.name
   }
 }
 
 module pipeline_extract_csv 'Microsoft.Custom/pipelines/extract.bicep' = {
-  name: '${exportContainerName}_extract_csv'
+  name: '${replace(exportContainerName, '-', '_')}_extract_csv'
   dependsOn: [
     pipeline_transform_csv
   ]
   params: {
     dataFactoryName: dataFactoryName
-    pipelineName: '${exportContainerName}_extract_csv'
+    pipelineName: '${replace(exportContainerName, '-', '_')}_extract_csv'
     pipelineToExecute: pipeline_transform_csv.name
   }
 }

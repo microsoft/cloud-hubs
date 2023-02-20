@@ -2,7 +2,7 @@ param(
   [string]$Scope,
   [string]$ResourceGroupName,
   [string]$StorageAccountId,
-  [string]$ContainerName = "export",
+  [string]$ContainerName = "ms-cm-exports",
   [string]$FolderName = $Scope.Split("/")[-1],
   [string]$Metric = "amortizedcost",
   [bool]$Future = $false,
