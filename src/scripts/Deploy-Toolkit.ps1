@@ -36,7 +36,7 @@ If ([string]::IsNullOrEmpty($ResourceGroup)) {
 }
 
 # Create resource group if it doesn't exist
-$rg = Get-AzResourceGroup $ResourceGroup
+$rg = Get-AzResourceGroup $ResourceGroup -ErrorAction SilentlyContinue
 If ($null -eq $rg) {
     New-AzResourceGroup `
         -Name $ResourceGroup `
@@ -46,8 +46,13 @@ If ($null -eq $rg) {
 
 # Start deployment
 $params = @{ hubName = $ResourceGroup };
-New-AzResourceGroupDeployment `
+$hub = New-AzResourceGroupDeployment `
     -TemplateFile "../templates/$Template/main.bicep" `
     -TemplateParameterObject $params `
     -ResourceGroupName $ResourceGroup `
     -WhatIf:$WhatIf
+
+Start-AzDataFactoryV2Trigger `
+    -ResourceGroupName $ResourceGroup `
+    -DataFactoryName $hub.Outputs.dataFactorytName.Value `
+    -Name $hub.Outputs.storageAccountTriggerName.Value -Force -ErrorAction SilentlyContinue
