@@ -21,6 +21,7 @@ function Write-DebugInfo {
 
   Write-Host ("{0}    {1}    {2}" -f (Get-Date), $DebugParams.Name, $DebugParams.DefinitionTimeframe)
 }
+
 function Set-CostManagementApi {
   param (
     $ApiParams
@@ -28,43 +29,91 @@ function Set-CostManagementApi {
 
   $uri = "https://management.azure.com/{0}/providers/Microsoft.CostManagement/exports/{1}?api-version=2021-10-01" -f $ApiParams.Scope, $ApiParams.Name
   Remove-AzCostManagementExport -Name $ApiParams.Name -Scope $ApiParams.Scope -ErrorAction SilentlyContinue
-  $payload = '{
-    "properties": {
-      "schedule": {
-        "status": "Active",
-        "recurrence": "{7}",
-        "recurrencePeriod": {
-          "from": "{6}",
-          "to": "2099-10-31T00:00:00Z"
-        }
-      },
-      "partitionData": "{5}",
-      "format": "Csv",
-      "deliveryInfo": {
-        "destination": {
-          "resourceId": "{0}",
-          "container": "{1}",
-          "rootFolderPath": "{2}"
-        }
-      },
-      "definition": {
-        "type": "{3}",
-        "timeframe": "{4}",
-        "dataSet": {
-          "granularity": "Daily"
+  
+  if ([string]$ApiParams.DefinitionTimeframe.ToLowerInvariant() -eq 'custom') {
+    $payload = '{
+      "properties": {
+        "schedule": {
+          "status": "Inactive",
+          "recurrence": "daily",
+          "recurrencePeriod": {
+            "from": "2099-06-01T00:00:00Z",
+            "to": "2099-10-31T00:00:00Z"
+          }
+        },
+        "partitionData": "true",
+        "format": "Csv",
+        "deliveryInfo": {
+          "destination": {
+            "resourceId": "{0}",
+            "container": "{1}",
+            "rootFolderPath": "{2}"
+          }
+        },
+        "definition": {
+          "type": "{3}",
+          "timeframe": "Custom",
+          "timePeriod" : {
+            "from" : "{4}",
+            "to" : "{5}"
+          },
+          "dataSet": {
+            "granularity": "Daily"
+          }
         }
       }
-    }
-  }' 
+    }'
   
-  $payload = $payload.Replace("{0}", $ApiParams.DestinationResourceId)
-  $payload = $payload.Replace("{1}", $ApiParams.DestinationContainer)
-  $payload = $payload.Replace("{2}", $ApiParams.DestinationRootFolderPath)
-  $payload = $payload.Replace("{3}", $ApiParams.DefinitionType)
-  $payload = $payload.Replace("{4}", $ApiParams.DefinitionTimeframe)
-  $payload = $payload.Replace("{5}", $ApiParams.PartitionData)
-  $payload = $payload.Replace("{6}", $ApiParams.RecurrencePeriodFrom)
-  $payload = $payload.Replace("{7}", $ApiParams.ScheduleRecurrence)
+    $payload = $payload.Replace("{0}", $ApiParams.DestinationResourceId)
+    $payload = $payload.Replace("{1}", $ApiParams.DestinationContainer)
+    $payload = $payload.Replace("{2}", $ApiParams.DestinationRootFolderPath)
+    $payload = $payload.Replace("{3}", $ApiParams.DefinitionType)
+    $payload = $payload.Replace("{4}", $ApiParams.TimePeriodFrom)
+    $payload = $payload.Replace("{5}", $ApiParams.TimePeriodTo)
+    $payload = $payload.Replace("{6}", $ApiParams.PartitionData)
+  }
+  else {
+    $payload = '{
+      "properties": {
+        "schedule": {
+          "status": "{8}",
+          "recurrence": "{7}",
+          "recurrencePeriod": {
+            "from": "{6}",
+            "to": "{9}"
+          }
+        },
+        "partitionData": "{5}",
+        "format": "Csv",
+        "deliveryInfo": {
+          "destination": {
+            "resourceId": "{0}",
+            "container": "{1}",
+            "rootFolderPath": "{2}"
+          }
+        },
+        "definition": {
+          "type": "{3}",
+          "timeframe": "{4}",
+          "dataSet": {
+            "granularity": "Daily"
+          }
+        }
+      }
+    }'
+
+    $payload = $payload.Replace("{0}", $ApiParams.DestinationResourceId)
+    $payload = $payload.Replace("{1}", $ApiParams.DestinationContainer)
+    $payload = $payload.Replace("{2}", $ApiParams.DestinationRootFolderPath)
+    $payload = $payload.Replace("{3}", $ApiParams.DefinitionType)
+    $payload = $payload.Replace("{4}", $ApiParams.DefinitionTimeframe)
+    $payload = $payload.Replace("{5}", $ApiParams.PartitionData)
+    $payload = $payload.Replace("{6}", $ApiParams.RecurrencePeriodFrom)
+    $payload = $payload.Replace("{9}", $ApiParams.RecurrencePeriodTo)
+    $payload = $payload.Replace("{7}", $ApiParams.ScheduleRecurrence)
+    $payload = $payload.Replace("{8}", $ApiParams.ScheduleStatus)
+  }
+  
   $apiResult = Invoke-AzRestMethod -Uri $uri -Method PUT -Payload $payload
   if ($apiResult.StatusCode -ne "201") {
     $apiResult
@@ -151,6 +200,8 @@ if ($Future) {
 }
 
 if ($History) {
+  Write-Host ("{0}    {1}" -f (get-date), "Historical Exports")
+
   [string]$dateFrom = "{0}-{1}-{2}T00:00:00Z" -f $StartDate.Year, $StartDate.Month, $StartDate.Day
   [string]$dateTo = "{0}-{1}-{2}T23:59:59Z" -f $EndDate.Year, $EndDate.Month, $EndDate.Day
   [datetime]$currentDate = $StartDate
@@ -170,7 +221,7 @@ if ($History) {
       ScheduleRecurrence        = 'Daily'
       TimePeriodFrom            = $dateFrom
       TimePeriodTo              = $dateTo
-      RecurrencePeriodFrom      = "2099-12-31T00:00:00Z"
+      RecurrencePeriodFrom      = "2099-01-01T00:00:00Z"
       RecurrencePeriodTo        = "2099-12-31T00:00:00Z"
       ScheduleStatus            = 'Inactive'
       DestinationRootFolderPath = $FolderName
