@@ -121,7 +121,7 @@ module keyVault 'Microsoft.KeyVault/vaults/deploy.bicep' = {
   }
 }
 
-module keyvayltSecret_storageAccount 'Microsoft.Custom/secrets/deploy.bicep' = {
+module keyvayltSecret_storageAccount 'Microsoft.FinOpsHubs/secrets/deploy.bicep' = {
   name: '${storageAccountName}_secret'
   params: {
     keyVaultName: keyVault.name
@@ -131,7 +131,7 @@ module keyvayltSecret_storageAccount 'Microsoft.Custom/secrets/deploy.bicep' = {
   }
 }
 
-module linkedService_keyvault 'Microsoft.Custom/linkedservices/deploy.bicep' = {
+module linkedService_keyvault 'Microsoft.FinOpsHubs/linkedservices/deploy.bicep' = {
   name: '${keyVault.name}_link'
   dependsOn: [
     dataFactory
@@ -145,7 +145,7 @@ module linkedService_keyvault 'Microsoft.Custom/linkedservices/deploy.bicep' = {
   }
 }
 
-module linkedService_storage 'Microsoft.Custom/linkedservices/deploy.bicep' = {
+module linkedService_storage 'Microsoft.FinOpsHubs/linkedservices/deploy.bicep' = {
   name: '${storageAccount.name}_link'
   dependsOn: [
     dataFactory
@@ -163,7 +163,7 @@ module linkedService_storage 'Microsoft.Custom/linkedservices/deploy.bicep' = {
   }
 }
 
-module dataset_mscmexport 'Microsoft.Custom/datasets/deploy.bicep' = {
+module dataset_mscmexport 'Microsoft.FinOpsHubs/datasets/deploy.bicep' = {
   name: replace(exportContainerName, '-', '_')
   dependsOn: [
     linkedService_storage
@@ -177,7 +177,7 @@ module dataset_mscmexport 'Microsoft.Custom/datasets/deploy.bicep' = {
   }
 }
 
-module dataset_mscmdata_csv 'Microsoft.Custom/datasets/deploy.bicep' = {
+module dataset_mscmdata_csv 'Microsoft.FinOpsHubs/datasets/deploy.bicep' = {
   name: '${replace(dataContainerName, '-', '_')}_csv'
   dependsOn: [
     linkedService_storage
@@ -192,7 +192,7 @@ module dataset_mscmdata_csv 'Microsoft.Custom/datasets/deploy.bicep' = {
   }
 }
 
-module dataset_mscmdata_parquet 'Microsoft.Custom/datasets/deploy.bicep' = {
+module dataset_mscmdata_parquet 'Microsoft.FinOpsHubs/datasets/deploy.bicep' = {
   name: '${replace(dataContainerName, '-', '_')}_parquet'
   dependsOn: [
     linkedService_storage
@@ -207,7 +207,7 @@ module dataset_mscmdata_parquet 'Microsoft.Custom/datasets/deploy.bicep' = {
   }
 }
 
-module pipeline_transform_parquet 'Microsoft.Custom/pipelines/transform.bicep' = {
+module pipeline_transform_parquet 'Microsoft.FinOpsHubs/pipelines/transform.bicep' = {
   name: '${replace(dataContainerName, '-', '_')}_transform_parquet'
   dependsOn: [
     dataset_mscmexport
@@ -223,7 +223,7 @@ module pipeline_transform_parquet 'Microsoft.Custom/pipelines/transform.bicep' =
   }
 }
 
-module pipeline_transform_csv 'Microsoft.Custom/pipelines/transform.bicep' = {
+module pipeline_transform_csv 'Microsoft.FinOpsHubs/pipelines/transform.bicep' = {
   name: '${replace(dataContainerName, '-', '_')}_transform_csv'
   dependsOn: [
     dataset_mscmexport
@@ -239,7 +239,7 @@ module pipeline_transform_csv 'Microsoft.Custom/pipelines/transform.bicep' = {
   }
 }
 
-module pipeline_extract_parquet 'Microsoft.Custom/pipelines/extract.bicep' = {
+module pipeline_extract_parquet 'Microsoft.FinOpsHubs/pipelines/extract.bicep' = {
   name: '${replace(exportContainerName, '-', '_')}_extract_parquet'
   dependsOn: [
     pipeline_transform_parquet
@@ -251,7 +251,7 @@ module pipeline_extract_parquet 'Microsoft.Custom/pipelines/extract.bicep' = {
   }
 }
 
-module pipeline_extract_csv 'Microsoft.Custom/pipelines/extract.bicep' = {
+module pipeline_extract_csv 'Microsoft.FinOpsHubs/pipelines/extract.bicep' = {
   name: '${replace(exportContainerName, '-', '_')}_extract_csv'
   dependsOn: [
     pipeline_transform_csv
@@ -263,7 +263,7 @@ module pipeline_extract_csv 'Microsoft.Custom/pipelines/extract.bicep' = {
   }
 }
 
-module trigger_storageAccount 'Microsoft.Custom/triggers/deploy.bicep' = {
+module trigger_storageAccount 'Microsoft.FinOpsHubs/triggers/deploy.bicep' = {
   name: '${storageAccount.name}_trigger'
   dependsOn: [
     pipeline_extract_csv
