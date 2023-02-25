@@ -56,3 +56,5 @@ Start-AzDataFactoryV2Trigger `
     -ResourceGroupName $ResourceGroup `
     -DataFactoryName $hub.Outputs.dataFactorytName.Value `
     -Name $hub.Outputs.storageAccountTriggerName.Value -Force -ErrorAction SilentlyContinue
+
+return $hub
