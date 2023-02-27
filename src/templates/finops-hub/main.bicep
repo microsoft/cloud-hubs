@@ -4,20 +4,20 @@
 
 targetScope = 'resourceGroup'
 
-@description('Name of the hub. Used for the resource group and to guarantee globally unique resource names.')
+@description('Optional. Name of the hub. Used to ensure unique resource names. Default: "finops-hub".')
 param hubName string
 
-@description('Optional. Location of the resources. Default: Same as deployment. See https://aka.ms/azureregions.')
+@description('Optional. Azure location where all resources should be created. See https://aka.ms/azureregions. Default: Same as deployment.')
 param location string = resourceGroup().location
 
 @allowed([
   'Premium_LRS'
   'Premium_ZRS'
 ])
-@description('Optional. Storage account SKU. LRS = Lowest cost, ZRS = High availability. Note Standard SKUs are not available for Data Lake gen2 storage.')
+@description('Optional. Storage SKU to use. LRS = Lowest cost, ZRS = High availability. Note Standard SKUs are not available for Data Lake gen2 storage. Allowed: Premium_LRS, Premium_ZRS. Default: Premium_LRS.')
 param storageSku string = 'Premium_LRS'
 
-@description('Optional. Tags for all resources.')
+@description('Optional. Tags to apply to all resources. We will also add the cm-resource-parent tag for improved cost roll-ups in Cost Management.')
 param tags object = {}
 
 /**

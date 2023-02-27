@@ -52,8 +52,10 @@ Templates follow the [Azure Quickstart Templates guidelines](https://github.com/
      3. Sort the root elements in this order: targetScope, parameters, variables, resources and modules references, outputs.
      4. Every parameter should have a `@description` or `@metadata` decorator first.
      5. Place a blank line between each parameter.
-   - `azuredeploy.parameters.us.json` â€“ Only required if parameters are specific to Azure Gov.
+   - `azuredeploy.parameters.us.json` – Only required if parameters are specific to Azure Gov.
    - `createUiDefinition.json`
+     - [CreateUiDef docs](https://learn.microsoft.com/azure/azure-resource-manager/managed-applications/create-uidefinition-overview)
+     - [Test in portal](https://portal.azure.com/?feature.customPortal=false&#blade/Microsoft_Azure_CreateUIDef/SandboxBlade)
 
 4. Validate templates using [arm-ttk](https://github.com/Azure/arm-ttk) and [Template Analyzer](https://github.com/Azure/template-analyzer).
 5. Create a single PR per template.

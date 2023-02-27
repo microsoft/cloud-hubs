@@ -1,0 +1,71 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "handler": "Microsoft.Azure.CreateUIDef",
+  "version": "0.1.2-preview",
+  "parameters": {
+    "config": {
+      "basics": {
+        "description": "Creates a new FinOps hub instance as a foundation for a custom cost management and optimization solution.",
+        "location": {
+          "label": "Location",
+          "resourceTypes": ["Microsoft.Storage/storageAccounts", "Microsoft.DataFactory/factories"]
+        }
+      }
+    },
+    "resourceTypes": ["Microsoft.Storage/storageAccounts", "Microsoft.DataFactory/factories"],
+    "basics": [
+      {
+        "name": "hubName",
+        "type": "Microsoft.Common.TextBox",
+        "label": "Name",
+        "defaultValue": "finops-hub",
+        "toolTip": "Name of the hub. Used to ensure unique resource names.",
+        "constraints": {
+          "required": true
+        },
+        "visible": true
+      },
+      {
+        "name": "storageSku",
+        "type": "Microsoft.Common.DropDown",
+        "label": "Storage redundancy",
+        "defaultValue": "Premium_LRS",
+        "toolTip": "The data in your storage account is always replicated to ensure durability and high availability. Choose a replication strategy that matches your durability requirements. [Learn more](https://go.microsoft.com/fwlink/?linkid=2163103)",
+        "constraints": {
+          "required": false,
+          "allowedValues": [
+            {
+              "label": "Locally-redundant (LRS) - Lowest cost",
+              "value": "Premium_LRS"
+            },
+            {
+              "label": "Zone-redundant (ZRS) - High availability",
+              "value": "Premium_ZRS"
+            }
+          ]
+        },
+        "visible": true
+      }
+    ],
+    "steps": [
+      {
+        "name": "tags",
+        "label": "Tags",
+        "elements": [
+          {
+            "name": "tagsByResource",
+            "label": "Tags",
+            "type": "Microsoft.Common.TagsByResource",
+            "resources": ["Microsoft.Cloud/hubs"]
+          }
+        ]
+      }
+    ],
+    "outputs": {
+      "hubName": "[basics('hubName')]",
+      "location": "[basics('region')]",
+      "storageSku": "[basics('storageSku')]",
+      "tags": "[steps('tags').tagsByResource]"
+    }
+  }
+}
