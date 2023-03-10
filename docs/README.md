@@ -19,8 +19,8 @@ FinOps hubs are:
 On this page:
 
 - [Summary](#summary)
-- [Creating a new FinOps hub](#creating-a-new-finops-hub)
-- [Customizing further](#customizing-further)
+- [Create a new hub](#create-a-new-hub)
+- [Get started with hubs](#get-started-with-hubs)
 - [Roadmap](#roadmap)
 - [Get involved](#get-involved)
 - [Changelog](#changelog)
@@ -42,7 +42,7 @@ Once deployed, you can create new exports in Cost Management and use out of the 
 
 <br>
 
-## Creating a new FinOps hub
+## Create a new hub
 
 1. [Deploy the **finops-hub** template](./deploy).
 2. [Create a new cost export](https://learn.microsoft.com/azure/cost-management-billing/costs/tutorial-export-acm-data?tabs=azure-portal) using the following settings:
@@ -68,16 +68,49 @@ Once deployed, you can create new exports in Cost Management and use out of the 
 
 <br>
 
-## Customizing further
+## Get started with hubs
 
-FinOps toolkit is intended to be customized. Here are a few pointers to get you started:
+After deploying a hub instance, there are several ways for you to get started:
 
-| Area            | Notes                                                                                                                                                                                                                                                                                                                 |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Power BI        | Power BI reports are starter templates and intended to be customized. We encourage you to customize as needed. [Learn more](./reports).                                                                                                                                                                               |
-| Data Factory    | Data Factory is used to ingest and clean up data. Do not edit the built-in pipelines. For details about the built-in pipelines, see [hub resources](./templates/modules/hub.md#resources).                                                                                                                            |
-| Storage account | Data is ingested into the `ms-cm-exports` container. Do not store anything other than Cost Management exports in this container. In v0.0.2 and earlier, you can modify files, but this will need to happen after the built-in pipelines are run. Don't remove or rename columns, as that will break Power BI reports. |
-| Templates       | We recommend not changing the template directly. Instead, create a new bicep module and reference `finops-hub/main.bicep` or `hub.bicep` directly. If you need to change `hub.bicep`, be sure to track those changes and re-apply them when upgrading to the latest release. [Learn more](./templates).               |
+1. Customize the built-in Power BI reports.
+
+   Our Power BI reports are starter templates and intended to be customized. We encourage you to customize as needed. [Learn more](./reports).
+
+2. Create your own Power BI reports.
+
+   If you'd like to create your own reports or add cost data to an existing report, you can either [copy queries from a toolkit report](./reports/README.md#setup-a-finops-toolkit-report) or [connect manually](./reports/README.md#connect-manually) using the Azure Data Lake Storage Gen2 connector.
+
+   <!-- NOTE TO CONTRIBUTORS: Keep this info note in sync with the same one under #3 below. -->
+
+   > ℹ️ _The schema may change multiple times before the 0.1 release. We will ensure Power BI reports have backwards compatibility, but if you access data directly, you may run into breaking changes with new releases. Familiarize yourself with [upcoming releases](https://aka.ms/finops/toolkit/roadmap) and review the [changelog](changelog.md) for breaking changes before you update._
+
+3. Access the cost data from custom tools.
+
+   Cost data is stored in an [Azure Data Lake Storage Gen2](https://learn.microsoft.com/azure/storage/blobs/data-lake-storage-introduction) account. You can use any tool that supports Azure Data Lake Storage Gen2 to access the data. Refer to the [data dictionary](./data-dictionary.md) for details about available columns.
+
+   <!-- NOTE TO CONTRIBUTORS: Keep this info note in sync with the same one under #2 above. -->
+
+   > ℹ️ _The schema may change multiple times before the 0.1 release. We will ensure Power BI reports have backwards compatibility, but if you access data directly, you may run into breaking changes with new releases. Familiarize yourself with [upcoming releases](https://aka.ms/finops/toolkit/roadmap) and review the [changelog](changelog.md) for breaking changes before you update._
+
+4. Apply cost allocation logic, augment, or manipulate your cost data using Data Factory.
+
+   [Data Factory](https://learn.microsoft.com/azure/data-factory/introduction) is used to ingest and transform data. We recommend using Data Factory as a cost-efficient solution to apply custom logic to your cost data. Use a consistent prefix for custom pipelines to ensure they don't overlap with new pipelines. Refer to [data processing](./data-processing.md) for details about how data is processed.
+
+   > ⚠️ _Keep in mind this is the primary area we are planning to evolve in [upcoming FinOps toolkit releases](https://aka.ms/finops/toolkit/roadmap). Please familiarize yourself with our roadmap to avoid conflicts with future updates. Consider [contributing to the project](../CONTRIBUTING.md) to add support for new scenarios to avoid conflicts._
+   >
+   > ![Version 0.0.1](https://img.shields.io/badge/version-0.0.1-lightgrey) &nbsp; ![Status: In progress](https://img.shields.io/badge/status-in_progress-blue) &nbsp;<sup>→</sup>&nbsp; [![Go to issue](https://img.shields.io/github/issues/detail/state/microsoft/cloud-hubs/59)](https://github.com/microsoft/cloud-hubs/issues/59)
+   >
+   > 🆕 _Add the following sentences to the description (before "Use a consistent prefix"):_
+   >
+   > Do not modify built-in pipelines or data in the **ms-cm-exports** container. Create a custom pipeline that monitors new data in the **ingestion** container.
+
+5. Generate custom alerts using Power Automate.
+
+   You have many options for generating custom alerts. [Power Automate](https://powerautomate.microsoft.com/connectors/details/shared_azureblob/azure-blob-storage) is a great option for people who are new to automation but you can also use [Data Factory](https://learn.microsoft.com/azure/data-factory/introduction), [Functions](https://learn.microsoft.com/azure/azure-functions/functions-overview), or any other service that supports custom code or direct access to data in Azure Data Lake Storage Gen2.
+
+No matter what you choose to do, we recommend creating a new bicep module to support updating your solution. You can reference `finops-hub/main.bicep` or `hub.bicep` directly to ensure you can apply new updates as they're released.
+
+If you need to change `hub.bicep`, be sure to track those changes and re-apply them when upgrading to the latest release. We generally don't recommend modifying the template or modules directly to avoid conflicts with future updates. Instead, consider contributing those changes back to the open source project. [Learn more](../CONTRIBUTING.md).
 
 > ![Version 0.0.2](https://img.shields.io/badge/version-0.0.2-lightgrey) &nbsp; ![Status: Proposed](https://img.shields.io/badge/status-proposed-lightgrey) &nbsp;<sup>→</sup>&nbsp; [![Go to issue](https://img.shields.io/github/issues/detail/state/microsoft/cloud-hubs/60)](https://github.com/microsoft/cloud-hubs/issues/60)
 >
