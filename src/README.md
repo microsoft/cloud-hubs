@@ -77,7 +77,7 @@ git config --global user.email "youremail@yourdomain.com"
 
 Fork the repository from the web and then clone your fork locally:
 
-```cmd
+```console
 git clone https://github.com/<your-github-account>/cloud-hubs.git
 cd cloud-hubs
 ```
@@ -90,20 +90,21 @@ cd cloud-hubs
 
 If creating a new feature, create a new feature branch:
 
-```cmd
+```console
 git checkout -b features/<feature-name>
-git branch --set-upstream-to=origin/dev
+git push origin features/<feature-name>
+git branch --set-upstream-to=features/<feature-name>
 ```
 
 If working on an existing feature, switch to the feature branch:
 
-```cmd
+```console
 git checkout features/<feature-name>
 ```
 
 If you have a single-commit change, you can create a dev branch and submit a PR from there:
 
-```cmd
+```console
 git checkout -b <your-github-account>/<feature-name>
 git branch --set-upstream-to=origin/dev
 ```
