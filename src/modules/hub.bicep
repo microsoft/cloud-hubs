@@ -5,14 +5,6 @@
 @description('Optional. Name of the hub. Used to ensure unique resource names. Default: "finops-hub".')
 param hubName string
 
-// Generate unique storage account name
-var storageAccountSuffix = 'store'
-var storageAccountName = '${substring(replace(toLower(hubName), '-', ''), 0, 24 - length(storageAccountSuffix))}${storageAccountSuffix}'
-
-// Data factory naming requirements: Min 3, Max 63, can only contain letters, numbers and non-repeating dashes 
-var dataFactorySuffix = '-engine'
-var dataFactoryName = '${take(hubName, 63 - length(dataFactorySuffix))}${dataFactorySuffix}'
-
 @description('Optional. Azure location where all resources should be created. See https://aka.ms/azureregions. Default: (resource group location).')
 param location string = resourceGroup().location
 
@@ -23,19 +15,32 @@ param location string = resourceGroup().location
 @description('Optional. Storage account SKU. LRS = Lowest cost, ZRS = High availability. Note Standard SKUs are not available for Data Lake gen2 storage. Default: Premium_LRS.')
 param storageSku string = 'Premium_LRS'
 
+// Generate unique storage account name
+var storageAccountSuffix = 'store'
+var storageAccountName = '${substring(replace(toLower(hubName), '-', ''), 0, 24 - length(storageAccountSuffix))}${storageAccountSuffix}'
+var containerNames = [ 'config', 'ms-cm-exports', 'ingestion' ]
+
+// Data factory naming requirements: Min 3, Max 63, can only contain letters, numbers and non-repeating dashes 
+var dataFactorySuffix = '-engine'
+var dataFactoryName = '${take(hubName, 63 - length(dataFactorySuffix))}${dataFactorySuffix}'
+
 @description('Optional. Tags to apply to all resources. We will also add the cm-resource-parent tag for improved cost roll-ups in Cost Management.')
 param tags object = {}
 var resourceTags = union(tags, {
     'cm-resource-parent': '${resourceGroup().id}/providers/Microsoft.Cloud/hubs/${hubName}'
   })
 
-@description('Optional. Enable telemetry to track anonymous module usage trends, monitor for bugs, and improve future releases.')
-param enableDefaultTelemetry bool = true
-
 @description('Optional. List of scope IDs to create exports for.')
 param exportScopes array
 
-var containerNames = ['config', 'ms-cm-exports', 'ingestion']
+@description('Optional. Number of days of cost data to retain in the ms-cm-exports container. Default: 0.')
+param exportRetentionInDays int = 0
+
+@description('Optional. Number of months of cost data to retain in the ingestion container. Default: 13.')
+param ingestionRetentionInMonths int = 13
+
+@description('Optional. Enable telemetry to track anonymous module usage trends, monitor for bugs, and improve future releases.')
+param enableDefaultTelemetry bool = true
 
 // The last segment of the telemetryId is used to identify this module
 var telemetryId = '00f120b5-2007-6120-0000-40b000000000'
@@ -86,7 +91,7 @@ module dataFactory 'Microsoft.DataFactory/factories/deploy.bicep' = {
 }
 
 resource storageAccountLookup 'Microsoft.Storage/storageAccounts@2021-06-01' existing = {
-  name: storageAccount.name
+  name: storageAccountName
 }
 
 resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2021-06-01' = {
@@ -119,16 +124,20 @@ resource uploadSettingsJson 'Microsoft.Resources/deploymentScripts@2020-10-01' =
         value: join(exportScopes, '|')
       }
       {
+        name: 'exportRetentionInDays'
+        value: string(exportRetentionInDays)
+      }
+      {
+        name: 'ingestionRetentionInMonths'
+        value: string(ingestionRetentionInMonths)
+      }
+      {
         name: 'storageAccountKey'
         value: storageAccountLookup.listKeys().keys[0].value
       }
       {
         name: 'storageAccountName'
-        value: storageAccount.name
-      }
-      {
-        name: 'containerName'
-        value: 'config'
+        value: storageAccountName
       }
     ]
     scriptContent: loadTextContent('./scripts/Copy-FileToAzureBlob.ps1')

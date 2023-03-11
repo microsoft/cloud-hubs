@@ -32,6 +32,8 @@ On this page:
 - **storageSku** (string) – Optional. Storage SKU to use. LRS = Lowest cost, ZRS = High availability. Note Standard SKUs are not available for Data Lake gen2 storage. Allowed: `Premium_LRS`, `Premium_ZRS`. Default: `Premium_LRS`.
 - **tags** (object) – Optional. Tags to apply to all resources. We will also add the `cm-resource-parent` tag for improved cost roll-ups in Cost Management.
 - **exportScopes** (array) – Optional. List of scope IDs to create exports for.
+- **exportRetentionInDays** (int) – Optional. Number of days of cost data to retain in the ms-cm-exports container. Default: 0.
+- **ingestionRetentionInMonths** (int) – Optional. Number of months of cost data to retain in the ingestion container. Default: 13.
 
 <br>
 
@@ -44,6 +46,8 @@ On this page:
   - **storageSku** = `param:storageSku`
   - **tags** = `param:tags`
   - **exportScopes** = `param:exportScopes`
+  - **exportRetentionInDays** = `param:exportRetentionInDays`
+  - **ingestionRetentionInMonths** = `param:ingestionRetentionInMonths`
 
 <br>
 

@@ -23,6 +23,12 @@ param tags object = {}
 @description('Optional. List of scope IDs to create exports for.')
 param exportScopes array = []
 
+@description('Optional. Number of days of cost data to retain in the ms-cm-exports container. Default: 0.')
+param exportRetentionInDays int = 0
+
+@description('Optional. Number of months of cost data to retain in the ingestion container. Default: 13.')
+param ingestionRetentionInMonths int = 13
+
 /**
  * Resources
  */
@@ -35,6 +41,8 @@ module hub '../../modules/hub.bicep' = {
     storageSku: storageSku
     tags: tags
     exportScopes: exportScopes
+    exportRetentionInDays: exportRetentionInDays
+    ingestionRetentionInMonths: ingestionRetentionInMonths
   }
 }
 
